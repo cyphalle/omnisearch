@@ -8,6 +8,12 @@ pub fn dedup_and_rank(mut results: Vec<SearchResult>) -> Vec<SearchResult> {
         seen_urls.insert(normalized)
     });
 
+    // Clean HTML entities from all text fields
+    for r in &mut results {
+        r.title = decode_html_entities(&r.title);
+        r.snippet = decode_html_entities(&r.snippet);
+    }
+
     results.sort_by(|a, b| {
         b.relevance_score
             .partial_cmp(&a.relevance_score)
@@ -15,6 +21,27 @@ pub fn dedup_and_rank(mut results: Vec<SearchResult>) -> Vec<SearchResult> {
     });
 
     results
+}
+
+fn decode_html_entities(s: &str) -> String {
+    s.replace("&amp;", "&")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&quot;", "\"")
+        .replace("&#39;", "'")
+        .replace("&#039;", "'")
+        .replace("&apos;", "'")
+        .replace("&#x27;", "'")
+        .replace("&#x2F;", "/")
+        .replace("&nbsp;", " ")
+        .replace("<b>", "")
+        .replace("</b>", "")
+        .replace("<i>", "")
+        .replace("</i>", "")
+        .replace("<em>", "")
+        .replace("</em>", "")
+        .replace("<strong>", "")
+        .replace("</strong>", "")
 }
 
 fn normalize_url(url: &str) -> String {

@@ -2,13 +2,14 @@ use clap::Parser;
 use colored::Colorize;
 use omnisearch::cli::{Cli, Commands, ConfigAction};
 use omnisearch::config::Config;
-use omnisearch::engine::SearchEngine;
+use omnisearch::engine::{ProgressEvent, SearchEngine};
 use omnisearch::http::build_client;
 use omnisearch::output::format_output;
 use omnisearch::ranking::dedup_and_rank;
 use omnisearch::rate_limit::RateLimiterRegistry;
 use omnisearch::sources::{all_source_info, build_sources};
 use omnisearch::types::{Category, SearchQuery, SearchResponse};
+use tokio::sync::mpsc;
 
 #[tokio::main]
 async fn main() {
@@ -147,7 +148,44 @@ async fn cmd_search(query: String, cli: &Cli, config: Config) {
         sources: cli.sources.clone(),
     };
 
-    let (results, errors, sources_queried) = engine.search(&search_query).await;
+    let verbose = cli.verbose;
+    let progress_tx = if verbose {
+        let (tx, mut rx) = mpsc::unbounded_channel::<ProgressEvent>();
+        tokio::spawn(async move {
+            while let Some(event) = rx.recv().await {
+                match event {
+                    ProgressEvent::Starting { source } => {
+                        eprintln!("  {} {}", "→".dimmed(), source.dimmed());
+                    }
+                    ProgressEvent::Done { source, count } => {
+                        eprintln!("  {} {} ({} results)", "✓".green(), source, count);
+                    }
+                    ProgressEvent::Failed { source, error } => {
+                        eprintln!("  {} {} ({})", "✗".red(), source, error.dimmed());
+                    }
+                }
+            }
+        });
+        Some(tx)
+    } else {
+        None
+    };
+
+    if verbose {
+        eprintln!(
+            "{} \"{}\" across {} sources...\n",
+            "Searching".bold(),
+            query,
+            engine.source_count(&search_query)
+        );
+    }
+
+    let (results, errors, sources_queried) = engine.search(&search_query, progress_tx).await;
+
+    if verbose {
+        eprintln!();
+    }
+
     let results = dedup_and_rank(results);
     let results: Vec<_> = results.into_iter().take(max_results).collect();
 

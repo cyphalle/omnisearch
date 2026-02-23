@@ -32,6 +32,10 @@ pub struct Cli {
     /// Timeout per source in seconds
     #[arg(short = 't', long)]
     pub timeout: Option<u64>,
+
+    /// Verbose mode: show progress on stderr
+    #[arg(short = 'v', long)]
+    pub verbose: bool,
 }
 
 #[derive(Subcommand, Debug)]

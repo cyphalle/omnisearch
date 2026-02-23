@@ -34,7 +34,7 @@ impl Default for GeneralConfig {
 }
 
 fn default_timeout() -> u64 {
-    5
+    8
 }
 fn default_max_results() -> usize {
     20
@@ -122,7 +122,7 @@ impl Config {
 
 [general]
 # Default timeout per source in seconds
-timeout_secs = 5
+timeout_secs = 8
 # Default maximum results to return
 max_results = 20
 # Default output format: json, table, markdown
