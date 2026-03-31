@@ -16,6 +16,7 @@ pub enum Category {
     Security,
     Geo,
     Music,
+    Market,
 }
 
 impl fmt::Display for Category {
@@ -32,6 +33,7 @@ impl fmt::Display for Category {
             Category::Security => write!(f, "security"),
             Category::Geo => write!(f, "geo"),
             Category::Music => write!(f, "music"),
+            Category::Market => write!(f, "market"),
         }
     }
 }
@@ -51,6 +53,7 @@ impl std::str::FromStr for Category {
             "security" => Ok(Category::Security),
             "geo" => Ok(Category::Geo),
             "music" => Ok(Category::Music),
+            "market" => Ok(Category::Market),
             _ => Err(format!("Unknown category: {s}")),
         }
     }
@@ -88,7 +91,7 @@ pub struct SourceInfo {
     pub rate_limit: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SearchResponse {
     pub query: String,
     pub total_results: usize,
@@ -97,7 +100,7 @@ pub struct SearchResponse {
     pub errors: Vec<SourceError>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SourceError {
     pub source: String,
     pub error: String,

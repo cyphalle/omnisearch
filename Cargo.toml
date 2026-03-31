@@ -52,8 +52,14 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # Futures utilities
 futures = "0.3"
 
+# Hashing (cache keys)
+sha2 = "0.10"
+
 # Directories
 dirs = "6"
+
+[dev-dependencies]
+tempfile = "3"
 
 [profile.release]
 opt-level = 3

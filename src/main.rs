@@ -1,5 +1,6 @@
 use clap::Parser;
 use colored::Colorize;
+use omnisearch::cache::Cache;
 use omnisearch::cli::{Cli, Commands, ConfigAction};
 use omnisearch::config::Config;
 use omnisearch::engine::{ProgressEvent, SearchEngine};
@@ -9,6 +10,7 @@ use omnisearch::ranking::dedup_and_rank;
 use omnisearch::rate_limit::RateLimiterRegistry;
 use omnisearch::sources::{all_source_info, build_sources};
 use omnisearch::types::{Category, SearchQuery, SearchResponse};
+use std::time::Duration;
 use tokio::sync::mpsc;
 
 #[tokio::main]
@@ -22,6 +24,7 @@ async fn main() {
 
     match cli.command {
         Some(Commands::Sources) => cmd_sources(&config),
+        Some(Commands::Mcp) => omnisearch::mcp::run_mcp_server().await,
         Some(Commands::Config { action }) => cmd_config(action, config),
         None => {
             if let Some(ref query) = cli.query {
@@ -125,11 +128,35 @@ async fn cmd_search(query: String, cli: &Cli, config: Config) {
     let max_results = cli.max_results.unwrap_or(config.general.max_results);
     let format = &cli.format;
 
+    let verbose = cli.verbose;
+
     let categories: Option<Vec<Category>> = cli.categories.as_ref().map(|cats| {
         cats.iter()
             .filter_map(|c| c.parse::<Category>().ok())
             .collect()
     });
+
+    // Check cache first (unless --no-cache)
+    let cache_ttl = Duration::from_secs(config.general.cache_ttl_secs);
+    let cache = Cache::new(Cache::default_dir(), cache_ttl);
+
+    if !cli.no_cache {
+        if let Ok(Some(cached)) = cache.get(&query, &categories, &cli.sources) {
+            if verbose {
+                eprintln!("{}", "Cache hit — using cached results".green());
+            }
+            let results: Vec<_> = cached.results.into_iter().take(max_results).collect();
+            let response = SearchResponse {
+                query: cached.query,
+                total_results: results.len(),
+                sources_queried: cached.sources_queried,
+                results,
+                errors: cached.errors,
+            };
+            println!("{}", format_output(&response, format));
+            return;
+        }
+    }
 
     let client = build_client(timeout_secs);
     let sources = build_sources(&config);
@@ -148,7 +175,6 @@ async fn cmd_search(query: String, cli: &Cli, config: Config) {
         sources: cli.sources.clone(),
     };
 
-    let verbose = cli.verbose;
     let progress_tx = if verbose {
         let (tx, mut rx) = mpsc::unbounded_channel::<ProgressEvent>();
         tokio::spawn(async move {
@@ -196,6 +222,13 @@ async fn cmd_search(query: String, cli: &Cli, config: Config) {
         results,
         errors,
     };
+
+    // Cache the response
+    if !cli.no_cache {
+        let _ = cache.put(&response.query, &cli.categories.as_ref().map(|cats| {
+            cats.iter().filter_map(|c| c.parse::<Category>().ok()).collect()
+        }), &cli.sources, &response);
+    }
 
     println!("{}", format_output(&response, format));
 }

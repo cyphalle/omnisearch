@@ -27,6 +27,10 @@ pub mod wikidata;
 pub mod wikipedia;
 pub mod world_bank;
 
+// Market sources (no key)
+pub mod gleif;
+pub mod sec_edgar;
+
 // Key-required sources
 pub mod alpha_vantage;
 pub mod brave;
@@ -56,6 +60,12 @@ pub mod urlscan;
 pub mod virustotal;
 pub mod wolfram_alpha;
 pub mod youtube;
+
+// Market sources (key-required)
+pub mod companies_house;
+pub mod crunchbase;
+pub mod opencorporates;
+pub mod producthunt;
 
 #[async_trait]
 pub trait Source: Send + Sync {
@@ -144,6 +154,12 @@ pub fn build_sources(config: &Config) -> Vec<Box<dyn Source>> {
     if config.is_source_enabled("geonames") {
         sources.push(Box::new(geonames::GeoNames));
     }
+    if config.is_source_enabled("sec_edgar") {
+        sources.push(Box::new(sec_edgar::SecEdgar));
+    }
+    if config.is_source_enabled("gleif") {
+        sources.push(Box::new(gleif::Gleif));
+    }
 
     // Key-required sources — only added if key is configured
     macro_rules! add_keyed_source {
@@ -189,6 +205,12 @@ pub fn build_sources(config: &Config) -> Vec<Box<dyn Source>> {
     add_keyed_source!("ipinfo", "ipinfo", |k| ipinfo::IpInfo { api_key: k });
     add_keyed_source!("mapbox", "mapbox", |k| mapbox::Mapbox { api_key: k });
 
+    // Market sources (key-required)
+    add_keyed_source!("crunchbase", "crunchbase", |k| crunchbase::Crunchbase { api_key: k });
+    add_keyed_source!("producthunt", "producthunt", |k| producthunt::ProductHunt { api_key: k });
+    add_keyed_source!("companies_house", "companies_house", |k| companies_house::CompaniesHouse { api_key: k });
+    add_keyed_source!("opencorporates", "opencorporates", |k| opencorporates::OpenCorporates { api_key: k });
+
     sources
 }
 
@@ -217,6 +239,9 @@ pub fn all_source_info(config: &Config) -> Vec<SourceInfo> {
         ("crtsh", Category::Security, false),
         ("haveibeenpwned", Category::Security, false),
         ("geonames", Category::Geo, false),
+        // Market sources (no key)
+        ("sec_edgar", Category::Market, false),
+        ("gleif", Category::Market, false),
         // Key-required sources
         ("brave", Category::General, true),
         ("newsapi", Category::News, true),
@@ -246,6 +271,11 @@ pub fn all_source_info(config: &Config) -> Vec<SourceInfo> {
         ("urlscan", Category::Security, true),
         ("ipinfo", Category::Security, true),
         ("mapbox", Category::Geo, true),
+        // Market sources (key-required)
+        ("crunchbase", Category::Market, true),
+        ("producthunt", Category::Market, true),
+        ("companies_house", Category::Market, true),
+        ("opencorporates", Category::Market, true),
     ];
 
     all.into_iter()

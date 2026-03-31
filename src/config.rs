@@ -21,6 +21,8 @@ pub struct GeneralConfig {
     pub max_results: usize,
     #[serde(default = "default_format")]
     pub default_format: String,
+    #[serde(default = "default_cache_ttl")]
+    pub cache_ttl_secs: u64,
 }
 
 impl Default for GeneralConfig {
@@ -29,6 +31,7 @@ impl Default for GeneralConfig {
             timeout_secs: default_timeout(),
             max_results: default_max_results(),
             default_format: default_format(),
+            cache_ttl_secs: default_cache_ttl(),
         }
     }
 }
@@ -41,6 +44,9 @@ fn default_max_results() -> usize {
 }
 fn default_format() -> String {
     "json".to_string()
+}
+fn default_cache_ttl() -> u64 {
+    3600
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

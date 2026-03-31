@@ -36,12 +36,19 @@ pub struct Cli {
     /// Verbose mode: show progress on stderr
     #[arg(short = 'v', long)]
     pub verbose: bool,
+
+    /// Disable cache, force fresh search
+    #[arg(long)]
+    pub no_cache: bool,
 }
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
     /// List available sources and their status
     Sources,
+
+    /// Start as MCP server (stdin/stdout JSON-RPC)
+    Mcp,
 
     /// Manage configuration
     Config {
