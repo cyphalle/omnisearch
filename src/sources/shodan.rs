@@ -20,7 +20,7 @@ impl Source for Shodan {
     fn rate_limit_per_minute(&self) -> u32 { 1 }
 
     async fn search(&self, client: &Client, query: &str, max_results: usize) -> OmniResult<Vec<SearchResult>> {
-        let url = format!("https://api.shodan.io/shodan/host/search?query={}&key={}", urlencoding::encode(query), self.api_key);
+        let url = format!("https://api.shodan.io/shodan/host/search?query={}&key={}", urlencoding::encode(query), urlencoding::encode(&self.api_key));
         let data: ShodanResponse = client.get(&url).send().await?.json().await?;
         Ok(data.matches.unwrap_or_default().into_iter().take(max_results).enumerate().map(|(i, m)| {
             SearchResult {

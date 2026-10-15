@@ -10,6 +10,7 @@ use omnisearch::ranking::dedup_and_rank;
 use omnisearch::rate_limit::RateLimiterRegistry;
 use omnisearch::sources::{all_source_info, build_sources};
 use omnisearch::types::{Category, SearchQuery, SearchResponse};
+use std::io::{BufRead, IsTerminal};
 use std::time::Duration;
 use tokio::sync::mpsc;
 
@@ -78,6 +79,10 @@ fn cmd_sources(config: &Config) {
 fn cmd_config(action: ConfigAction, mut config: Config) {
     match action {
         ConfigAction::Set { source, key } => {
+            let key = match key.as_deref() {
+                None | Some("-") => read_key_from_stdin(&source),
+                Some(k) => k.to_string(),
+            };
             config.set_api_key(source.clone(), key);
             if let Err(e) = config.save() {
                 eprintln!("{}: {}", "Error saving config".red(), e);
@@ -86,12 +91,21 @@ fn cmd_config(action: ConfigAction, mut config: Config) {
             println!("{} API key set for '{}'", "✓".green(), source);
         }
         ConfigAction::Show => {
-            let path = Config::config_path();
+            let path = config_path_or_exit();
             println!("{}: {}", "Config path".bold(), path.display());
             println!();
             if path.exists() {
-                let content = std::fs::read_to_string(&path).unwrap_or_default();
-                println!("{content}");
+                // Print the parsed config with keys masked, never the raw file.
+                match Config::load() {
+                    Ok(cfg) => match toml::to_string_pretty(&cfg.masked()) {
+                        Ok(content) => println!("{content}"),
+                        Err(e) => eprintln!("{}: {}", "Error rendering config".red(), e),
+                    },
+                    Err(e) => {
+                        eprintln!("{}: {}", "Error reading config".red(), e);
+                        std::process::exit(1);
+                    }
+                }
             } else {
                 println!(
                     "{}",
@@ -100,7 +114,7 @@ fn cmd_config(action: ConfigAction, mut config: Config) {
             }
         }
         ConfigAction::Init => {
-            let path = Config::config_path();
+            let path = config_path_or_exit();
             if path.exists() {
                 eprintln!(
                     "{}: Config file already exists at {}",
@@ -109,18 +123,47 @@ fn cmd_config(action: ConfigAction, mut config: Config) {
                 );
                 std::process::exit(1);
             }
-            let dir = Config::config_dir();
-            std::fs::create_dir_all(&dir).unwrap_or_else(|e| {
+            let dir = Config::config_dir().unwrap_or_else(|e| {
+                eprintln!("{}: {}", "Config error".red(), e);
+                std::process::exit(1);
+            });
+            omnisearch::fsutil::create_private_dir(&dir).unwrap_or_else(|e| {
                 eprintln!("{}: {}", "Error creating config dir".red(), e);
                 std::process::exit(1);
             });
-            std::fs::write(&path, Config::generate_template()).unwrap_or_else(|e| {
+            omnisearch::fsutil::write_private_file(&path, Config::generate_template().as_bytes())
+                .unwrap_or_else(|e| {
                 eprintln!("{}: {}", "Error writing config".red(), e);
                 std::process::exit(1);
             });
             println!("{} Config created at {}", "✓".green(), path.display());
         }
     }
+}
+
+fn config_path_or_exit() -> std::path::PathBuf {
+    Config::config_path().unwrap_or_else(|e| {
+        eprintln!("{}: {}", "Config error".red(), e);
+        std::process::exit(1);
+    })
+}
+
+fn read_key_from_stdin(source: &str) -> String {
+    let stdin = std::io::stdin();
+    if stdin.is_terminal() {
+        eprintln!("Paste the API key for '{source}' and press Enter:");
+    }
+    let mut line = String::new();
+    if let Err(e) = stdin.lock().read_line(&mut line) {
+        eprintln!("{}: {}", "Error reading key from stdin".red(), e);
+        std::process::exit(1);
+    }
+    let key = line.trim().to_string();
+    if key.is_empty() {
+        eprintln!("{}", "No API key provided on stdin.".red());
+        std::process::exit(1);
+    }
+    key
 }
 
 async fn cmd_search(query: String, cli: &Cli, config: Config) {
@@ -138,9 +181,19 @@ async fn cmd_search(query: String, cli: &Cli, config: Config) {
 
     // Check cache first (unless --no-cache)
     let cache_ttl = Duration::from_secs(config.general.cache_ttl_secs);
-    let cache = Cache::new(Cache::default_dir(), cache_ttl);
+    let cache = if cli.no_cache {
+        None
+    } else {
+        match Cache::default_dir() {
+            Ok(dir) => Some(Cache::new(dir, cache_ttl)),
+            Err(e) => {
+                eprintln!("{}: {} (running without cache)", "Cache disabled".yellow(), e);
+                None
+            }
+        }
+    };
 
-    if !cli.no_cache {
+    if let Some(ref cache) = cache {
         if let Ok(Some(cached)) = cache.get(&query, &categories, &cli.sources) {
             if verbose {
                 eprintln!("{}", "Cache hit — using cached results".green());
@@ -224,7 +277,7 @@ async fn cmd_search(query: String, cli: &Cli, config: Config) {
     };
 
     // Cache the response
-    if !cli.no_cache {
+    if let Some(ref cache) = cache {
         let _ = cache.put(&response.query, &cli.categories.as_ref().map(|cats| {
             cats.iter().filter_map(|c| c.parse::<Category>().ok()).collect()
         }), &cli.sources, &response);

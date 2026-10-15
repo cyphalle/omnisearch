@@ -26,7 +26,7 @@ impl Source for AlphaVantage {
     fn rate_limit_per_minute(&self) -> u32 { 5 }
 
     async fn search(&self, client: &Client, query: &str, max_results: usize) -> OmniResult<Vec<SearchResult>> {
-        let url = format!("https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords={}&apikey={}", urlencoding::encode(query), self.api_key);
+        let url = format!("https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords={}&apikey={}", urlencoding::encode(query), urlencoding::encode(&self.api_key));
         let data: AvResponse = client.get(&url).send().await?.json().await?;
         Ok(data.best_matches.unwrap_or_default().into_iter().take(max_results).enumerate().map(|(i, m)| {
             SearchResult {

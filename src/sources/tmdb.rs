@@ -20,7 +20,7 @@ impl Source for Tmdb {
     fn rate_limit_per_minute(&self) -> u32 { 40 }
 
     async fn search(&self, client: &Client, query: &str, max_results: usize) -> OmniResult<Vec<SearchResult>> {
-        let url = format!("https://api.themoviedb.org/3/search/multi?query={}&api_key={}", urlencoding::encode(query), self.api_key);
+        let url = format!("https://api.themoviedb.org/3/search/multi?query={}&api_key={}", urlencoding::encode(query), urlencoding::encode(&self.api_key));
         let data: TmdbResponse = client.get(&url).send().await?.json().await?;
         Ok(data.results.unwrap_or_default().into_iter().take(max_results).enumerate().map(|(i, item)| {
             let title = item.title.or(item.name).unwrap_or_default();

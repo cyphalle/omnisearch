@@ -14,7 +14,7 @@ omnisearch "query" -n 20                  # max results
 omnisearch "query" -v                     # verbose (progress on stderr)
 omnisearch "query" --no-cache             # skip cache, force fresh search
 omnisearch sources                        # list sources + status
-omnisearch config set <source> "<key>"    # add API key
+omnisearch config set <source>            # add API key (read from stdin, or pass it as 2nd arg)
 omnisearch mcp                            # start MCP server (stdin/stdout)
 ```
 

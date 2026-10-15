@@ -18,7 +18,7 @@ impl Source for IpInfo {
     fn rate_limit_per_minute(&self) -> u32 { 60 }
 
     async fn search(&self, client: &Client, query: &str, _max_results: usize) -> OmniResult<Vec<SearchResult>> {
-        let url = format!("https://ipinfo.io/{}?token={}", urlencoding::encode(query), self.api_key);
+        let url = format!("https://ipinfo.io/{}?token={}", urlencoding::encode(query), urlencoding::encode(&self.api_key));
         let data: IpResponse = client.get(&url).send().await?.json().await?;
         let ip = data.ip.unwrap_or_else(|| query.to_string());
         Ok(vec![SearchResult {

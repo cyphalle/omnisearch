@@ -1,5 +1,5 @@
 use omnisearch::cache::Cache;
-use omnisearch::types::{Category, SearchResponse, SearchResult};
+use omnisearch::types::{Category, SearchResponse, SearchResult, SourceError};
 use std::time::Duration;
 
 fn make_response(query: &str) -> SearchResponse {
@@ -57,7 +57,9 @@ fn test_cache_expired() {
     let response = make_response("test");
     cache.put("test", &None, &None, &response).unwrap();
 
-    std::thread::sleep(Duration::from_millis(1500));
+    // Timestamps have one-second resolution: 1.5 s can read as 1 s elapsed,
+    // which is not past a 1 s TTL. Wait long enough to always cross it.
+    std::thread::sleep(Duration::from_millis(2100));
 
     let cached = cache.get("test", &None, &None).unwrap();
     assert!(cached.is_none());
@@ -82,4 +84,35 @@ fn test_cache_different_categories() {
     // Same category = cache hit
     let cached = cache.get("test", &cats_a, &None).unwrap();
     assert!(cached.is_some());
+}
+
+#[test]
+fn test_cache_drops_errors_and_is_private() {
+    let dir = tempfile::tempdir().unwrap();
+    let cache_dir = dir.path().join("omnisearch");
+    let cache = Cache::new(cache_dir.clone(), Duration::from_secs(3600));
+
+    let mut response = make_response("secret query");
+    response.errors.push(SourceError {
+        source: "guardian".to_string(),
+        error: "HTTP error: api-key=SECRET".to_string(),
+    });
+    cache.put("secret query", &None, &None, &response).unwrap();
+
+    let cached = cache.get("secret query", &None, &None).unwrap().unwrap();
+    assert!(cached.errors.is_empty());
+
+    let entries: Vec<_> = std::fs::read_dir(&cache_dir).unwrap().collect();
+    assert_eq!(entries.len(), 1);
+    let file = entries[0].as_ref().unwrap().path();
+    assert!(!std::fs::read_to_string(&file).unwrap().contains("SECRET"));
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let file_mode = std::fs::metadata(&file).unwrap().permissions().mode() & 0o777;
+        let dir_mode = std::fs::metadata(&cache_dir).unwrap().permissions().mode() & 0o777;
+        assert_eq!(file_mode, 0o600);
+        assert_eq!(dir_mode, 0o700);
+    }
 }

@@ -26,7 +26,7 @@ impl Source for YouTube {
 
     async fn search(&self, client: &Client, query: &str, max_results: usize) -> OmniResult<Vec<SearchResult>> {
         let limit = max_results.min(50);
-        let url = format!("https://www.googleapis.com/youtube/v3/search?part=snippet&q={}&maxResults={}&type=video&key={}", urlencoding::encode(query), limit, self.api_key);
+        let url = format!("https://www.googleapis.com/youtube/v3/search?part=snippet&q={}&maxResults={}&type=video&key={}", urlencoding::encode(query), limit, urlencoding::encode(&self.api_key));
         let data: YtResponse = client.get(&url).send().await?.json().await?;
         Ok(data.items.unwrap_or_default().into_iter().enumerate().filter_map(|(i, item)| {
             let snippet = item.snippet?;

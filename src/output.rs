@@ -19,16 +19,8 @@ fn format_table(response: &SearchResponse) -> String {
     table.set_header(vec!["#", "Source", "Title", "URL"]);
 
     for (i, result) in response.results.iter().enumerate() {
-        let title = if result.title.len() > 60 {
-            format!("{}...", &result.title[..57])
-        } else {
-            result.title.clone()
-        };
-        let url = if result.url.len() > 50 {
-            format!("{}...", &result.url[..47])
-        } else {
-            result.url.clone()
-        };
+        let title = truncate_chars(&result.title, 60);
+        let url = truncate_chars(&result.url, 50);
         table.add_row(vec![
             Cell::new(i + 1),
             Cell::new(&result.source),
@@ -53,6 +45,16 @@ fn format_table(response: &SearchResponse) -> String {
     }
 
     output
+}
+
+/// Truncate on a char boundary (byte slicing panics on multi-byte titles).
+fn truncate_chars(s: &str, max: usize) -> String {
+    if s.chars().count() > max {
+        let head: String = s.chars().take(max.saturating_sub(3)).collect();
+        format!("{head}...")
+    } else {
+        s.to_string()
+    }
 }
 
 fn format_markdown(response: &SearchResponse) -> String {

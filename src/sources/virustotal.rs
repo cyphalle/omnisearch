@@ -23,10 +23,10 @@ impl Source for VirusTotal {
         let url = format!("https://www.virustotal.com/api/v3/search?query={}&limit={}", urlencoding::encode(query), max_results.min(20));
         let data: VtResponse = client.get(&url).header("x-apikey", &self.api_key).send().await?.json().await?;
         Ok(data.data.unwrap_or_default().into_iter().enumerate().map(|(i, item)| {
-            let snippet = item.attributes.as_ref().and_then(|a| {
+            let snippet = item.attributes.as_ref().map(|a| {
                 let malicious = a.get("last_analysis_stats").and_then(|s| s.get("malicious")).and_then(|v| v.as_u64()).unwrap_or(0);
                 let total = a.get("last_analysis_stats").and_then(|s| s.get("undetected")).and_then(|v| v.as_u64()).unwrap_or(0) + malicious;
-                Some(format!("Type: {} | Detections: {}/{}", item.item_type, malicious, total))
+                format!("Type: {} | Detections: {}/{}", item.item_type, malicious, total)
             }).unwrap_or_else(|| format!("Type: {}", item.item_type));
             SearchResult {
                 title: item.id.clone(), url: format!("https://www.virustotal.com/gui/search/{}", item.id),

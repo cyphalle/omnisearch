@@ -1,4 +1,5 @@
-use crate::error::OmniResult;
+use crate::error::{OmniError, OmniResult};
+use crate::fsutil::{create_private_dir, write_private_file};
 use crate::types::{Category, SearchResponse};
 use sha2::{Digest, Sha256};
 use std::path::PathBuf;
@@ -20,10 +21,11 @@ impl Cache {
         Self { dir, ttl }
     }
 
-    pub fn default_dir() -> PathBuf {
+    /// Per-user cache directory. Never falls back to a shared location such as /tmp.
+    pub fn default_dir() -> OmniResult<PathBuf> {
         dirs::cache_dir()
-            .unwrap_or_else(|| PathBuf::from("/tmp"))
-            .join("omnisearch")
+            .map(|d| d.join("omnisearch"))
+            .ok_or_else(|| OmniError::Config("cannot determine the user cache directory".into()))
     }
 
     pub fn get(
@@ -56,7 +58,10 @@ impl Cache {
             return Ok(None);
         }
 
-        Ok(Some(entry.response))
+        let mut response = entry.response;
+        // Entries written by older versions may still hold errors.
+        response.errors.clear();
+        Ok(Some(response))
     }
 
     pub fn put(
@@ -66,19 +71,24 @@ impl Cache {
         sources: &Option<Vec<String>>,
         response: &SearchResponse,
     ) -> OmniResult<()> {
-        std::fs::create_dir_all(&self.dir)?;
+        create_private_dir(&self.dir)?;
+
+        // Errors are not cached: they can carry provider messages and are
+        // transient by nature, so a cache hit must not replay them.
+        let mut response = response.clone();
+        response.errors.clear();
 
         let entry = CacheEntry {
             timestamp: SystemTime::now()
                 .duration_since(SystemTime::UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs(),
-            response: response.clone(),
+            response,
         };
 
         let path = self.cache_path(query, categories, sources);
         let content = serde_json::to_string(&entry)?;
-        std::fs::write(path, content)?;
+        write_private_file(&path, content.as_bytes())?;
         Ok(())
     }
 

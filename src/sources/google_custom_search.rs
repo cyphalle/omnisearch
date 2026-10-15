@@ -22,7 +22,7 @@ impl Source for GoogleCustomSearch {
 
     async fn search(&self, client: &Client, query: &str, max_results: usize) -> OmniResult<Vec<SearchResult>> {
         let limit = max_results.min(10);
-        let url = format!("https://www.googleapis.com/customsearch/v1?q={}&key={}&cx={}&num={}", urlencoding::encode(query), self.api_key, self.cx, limit);
+        let url = format!("https://www.googleapis.com/customsearch/v1?q={}&key={}&cx={}&num={}", urlencoding::encode(query), urlencoding::encode(&self.api_key), urlencoding::encode(&self.cx), limit);
         let data: GcsResponse = client.get(&url).send().await?.json().await?;
         Ok(data.items.unwrap_or_default().into_iter().enumerate().map(|(i, item)| {
             SearchResult {

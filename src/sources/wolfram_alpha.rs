@@ -24,7 +24,7 @@ impl Source for WolframAlpha {
     fn rate_limit_per_minute(&self) -> u32 { 60 }
 
     async fn search(&self, client: &Client, query: &str, max_results: usize) -> OmniResult<Vec<SearchResult>> {
-        let url = format!("https://api.wolframalpha.com/v2/query?input={}&format=plaintext&output=json&appid={}", urlencoding::encode(query), self.api_key);
+        let url = format!("https://api.wolframalpha.com/v2/query?input={}&format=plaintext&output=json&appid={}", urlencoding::encode(query), urlencoding::encode(&self.api_key));
         let data: WaResponse = client.get(&url).send().await?.json().await?;
         if !data.queryresult.success { return Ok(vec![]); }
         Ok(data.queryresult.pods.unwrap_or_default().into_iter().take(max_results).enumerate().map(|(i, pod)| {

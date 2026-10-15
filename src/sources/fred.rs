@@ -21,7 +21,7 @@ impl Source for Fred {
 
     async fn search(&self, client: &Client, query: &str, max_results: usize) -> OmniResult<Vec<SearchResult>> {
         let limit = max_results.min(50);
-        let url = format!("https://api.stlouisfed.org/fred/series/search?search_text={}&limit={}&api_key={}&file_type=json", urlencoding::encode(query), limit, self.api_key);
+        let url = format!("https://api.stlouisfed.org/fred/series/search?search_text={}&limit={}&api_key={}&file_type=json", urlencoding::encode(query), limit, urlencoding::encode(&self.api_key));
         let data: FredResponse = client.get(&url).send().await?.json().await?;
         Ok(data.seriess.unwrap_or_default().into_iter().enumerate().map(|(i, s)| {
             SearchResult {

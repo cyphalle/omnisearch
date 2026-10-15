@@ -17,6 +17,10 @@ struct CrtEntry {
     not_after: String,
 }
 
+/// crt.sh returns every certificate for a domain in one JSON array; popular
+/// domains reach tens of megabytes.
+const MAX_BODY_BYTES: usize = 10 * 1024 * 1024;
+
 #[async_trait]
 impl Source for CrtSh {
     fn name(&self) -> &str { "crtsh" }
@@ -28,7 +32,8 @@ impl Source for CrtSh {
         let url = format!("https://crt.sh/?q={}&output=json", urlencoding::encode(query));
         let resp = client.get(&url).send().await?;
         if !resp.status().is_success() { return Ok(vec![]); }
-        let entries: Vec<CrtEntry> = resp.json().await.unwrap_or_default();
+        let body = crate::http::read_body_capped(resp, MAX_BODY_BYTES, "crtsh").await?;
+        let entries: Vec<CrtEntry> = serde_json::from_slice(&body).unwrap_or_default();
 
         Ok(entries.into_iter().take(max_results).enumerate().map(|(i, e)| {
             SearchResult {

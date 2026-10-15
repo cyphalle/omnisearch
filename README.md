@@ -38,7 +38,7 @@ omnisearch sources
 # Manage configuration
 omnisearch config init          # create default config
 omnisearch config show          # show current config
-omnisearch config set brave "BSA..."  # set an API key
+omnisearch config set brave          # set an API key (read from stdin)
 ```
 
 ## Sources (50)
@@ -111,11 +111,23 @@ Config file location: `~/.config/omnisearch/config.toml` (macOS: `~/Library/Appl
 # Generate default config
 omnisearch config init
 
-# Add API keys
-omnisearch config set brave "BSA..."
-omnisearch config set github "$(gh auth token)"
-omnisearch config set tmdb "abc123..."
+# Add API keys (prompted on stdin: the key stays out of shell history)
+omnisearch config set brave
+gh auth token | omnisearch config set github -
+omnisearch config set tmdb "abc123..."   # also accepted, but lands in shell history
+
+# Show the config, API keys masked to their last 4 characters
+omnisearch config show
 ```
+
+## Security
+
+- **Key storage.** The config file holds every API key in plain text. It is written with mode `0600` in a `0700` directory. `config show` masks keys.
+- **Keys in URLs.** About 20 providers only accept the key as a query parameter (Guardian, NewsAPI, NYT, FRED, Polygon, ...). Keys are URL-encoded, and HTTP errors are stripped of the request URL before they are printed, cached or returned over MCP.
+- **Plain HTTP providers.** `mediastack` is called over `http://`: its free plan does not serve HTTPS, so its key travels unencrypted. Disable the source (`[sources.mediastack] enabled = false`) if that matters on your network. `geonames` also uses `http://` with the public `demo` account (no secret).
+- **Cache.** Results are cached under the user cache directory (`~/Library/Caches/omnisearch` on macOS) with mode `0600`. Errors are never cached. Delete the directory or pass `--no-cache` for sensitive queries.
+- **Prompt injection (MCP).** Titles, snippets and URLs come from third parties and can contain text written to manipulate an LLM. The MCP `search` tool wraps them in an `<untrusted_search_results>` block, flattens them to one line, replaces `<` and `>`, truncates snippets to 500 characters and caps `max_results` at 50. This reduces the risk without removing it: do not give an agent that reads these results tools with irreversible effects without a human check.
+- **Response size.** Sources that can return very large payloads (`crtsh`, `common_crawl`) are read with a size cap.
 
 ## Architecture
 

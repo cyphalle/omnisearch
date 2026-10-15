@@ -19,7 +19,7 @@ impl Source for Currents {
     fn requires_key(&self) -> bool { true }
 
     async fn search(&self, client: &Client, query: &str, max_results: usize) -> OmniResult<Vec<SearchResult>> {
-        let url = format!("https://api.currentsapi.services/v1/search?keywords={}&apiKey={}", urlencoding::encode(query), self.api_key);
+        let url = format!("https://api.currentsapi.services/v1/search?keywords={}&apiKey={}", urlencoding::encode(query), urlencoding::encode(&self.api_key));
         let data: CuResponse = client.get(&url).send().await?.json().await?;
         Ok(data.news.unwrap_or_default().into_iter().take(max_results).enumerate().map(|(i, a)| {
             SearchResult {

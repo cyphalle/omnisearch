@@ -7,6 +7,12 @@ pub struct RateLimiterRegistry {
     limiters: HashMap<String, Arc<DefaultDirectRateLimiter>>,
 }
 
+impl Default for RateLimiterRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RateLimiterRegistry {
     pub fn new() -> Self {
         Self {

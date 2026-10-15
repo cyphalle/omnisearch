@@ -24,7 +24,7 @@ impl Source for GNews {
 
     async fn search(&self, client: &Client, query: &str, max_results: usize) -> OmniResult<Vec<SearchResult>> {
         let limit = max_results.min(10);
-        let url = format!("https://gnews.io/api/v4/search?q={}&max={}&token={}", urlencoding::encode(query), limit, self.api_key);
+        let url = format!("https://gnews.io/api/v4/search?q={}&max={}&token={}", urlencoding::encode(query), limit, urlencoding::encode(&self.api_key));
         let data: GnResponse = client.get(&url).send().await?.json().await?;
         Ok(data.articles.unwrap_or_default().into_iter().enumerate().map(|(i, a)| {
             SearchResult {

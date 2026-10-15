@@ -33,7 +33,7 @@ impl Source for Guardian {
 
     async fn search(&self, client: &Client, query: &str, max_results: usize) -> OmniResult<Vec<SearchResult>> {
         let limit = max_results.min(50);
-        let url = format!("https://content.guardianapis.com/search?q={}&page-size={}&api-key={}", urlencoding::encode(query), limit, self.api_key);
+        let url = format!("https://content.guardianapis.com/search?q={}&page-size={}&api-key={}", urlencoding::encode(query), limit, urlencoding::encode(&self.api_key));
         let data: GResponse = client.get(&url).send().await?.json().await?;
         Ok(data.response.results.into_iter().enumerate().map(|(i, a)| {
             SearchResult {
