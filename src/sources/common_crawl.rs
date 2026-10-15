@@ -18,6 +18,9 @@ struct CcResult {
     length: Option<String>,
 }
 
+/// At most 20 index lines are requested; anything far larger is not a valid answer.
+const MAX_BODY_BYTES: usize = 2 * 1024 * 1024;
+
 #[async_trait]
 impl Source for CommonCrawl {
     fn name(&self) -> &str { "common_crawl" }
@@ -32,7 +35,8 @@ impl Source for CommonCrawl {
             urlencoding::encode(query), limit
         );
         let resp = client.get(&url).send().await?;
-        let text = resp.text().await?;
+        let body = crate::http::read_body_capped(resp, MAX_BODY_BYTES, "common_crawl").await?;
+        let text = String::from_utf8_lossy(&body);
         let results: Vec<SearchResult> = text.lines().filter_map(|line| {
             let cc: CcResult = serde_json::from_str(line).ok()?;
             Some(SearchResult {

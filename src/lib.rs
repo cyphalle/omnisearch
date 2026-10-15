@@ -5,6 +5,7 @@ pub mod cli;
 pub mod config;
 pub mod engine;
 pub mod error;
+pub mod fsutil;
 pub mod http;
 pub mod mcp;
 pub mod output;

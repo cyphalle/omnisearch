@@ -27,11 +27,11 @@ impl Source for OpenWeatherMap {
     fn rate_limit_per_minute(&self) -> u32 { 60 }
 
     async fn search(&self, client: &Client, query: &str, _max_results: usize) -> OmniResult<Vec<SearchResult>> {
-        let geo_url = format!("http://api.openweathermap.org/geo/1.0/direct?q={}&limit=1&appid={}", urlencoding::encode(query), self.api_key);
+        let geo_url = format!("https://api.openweathermap.org/geo/1.0/direct?q={}&limit=1&appid={}", urlencoding::encode(query), urlencoding::encode(&self.api_key));
         let geos: Vec<OwmGeo> = client.get(&geo_url).send().await?.json().await?;
         let Some(geo) = geos.first() else { return Ok(vec![]); };
 
-        let weather_url = format!("https://api.openweathermap.org/data/2.5/weather?lat={}&lon={}&appid={}&units=metric", geo.lat, geo.lon, self.api_key);
+        let weather_url = format!("https://api.openweathermap.org/data/2.5/weather?lat={}&lon={}&appid={}&units=metric", geo.lat, geo.lon, urlencoding::encode(&self.api_key));
         let weather: OwmWeather = client.get(&weather_url).send().await?.json().await?;
 
         let mut results = Vec::new();
@@ -41,7 +41,7 @@ impl Source for OpenWeatherMap {
             let location = format!("{}{}", geo.name, geo.country.as_ref().map(|c| format!(", {c}")).unwrap_or_default());
             results.push(SearchResult {
                 title: format!("Weather in {location}"),
-                url: format!("https://openweathermap.org/city"),
+                url: "https://openweathermap.org/city".to_string(),
                 snippet: format!("{condition} | Temp: {:.1}°C (feels {:.1}°C) | Humidity: {}% | Wind: {:.1} m/s", main.temp, main.feels_like.unwrap_or(main.temp), main.humidity, wind),
                 source: "openweathermap".into(), category: Category::Weather,
                 published: Some(chrono::Utc::now()), author: None,

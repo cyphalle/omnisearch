@@ -21,7 +21,7 @@ impl Source for Mapbox {
 
     async fn search(&self, client: &Client, query: &str, max_results: usize) -> OmniResult<Vec<SearchResult>> {
         let limit = max_results.min(10);
-        let url = format!("https://api.mapbox.com/geocoding/v5/mapbox.places/{}.json?access_token={}&limit={}", urlencoding::encode(query), self.api_key, limit);
+        let url = format!("https://api.mapbox.com/geocoding/v5/mapbox.places/{}.json?access_token={}&limit={}", urlencoding::encode(query), urlencoding::encode(&self.api_key), limit);
         let data: MbResponse = client.get(&url).send().await?.json().await?;
         Ok(data.features.unwrap_or_default().into_iter().enumerate().map(|(i, f)| {
             let coords = if f.center.len() >= 2 { format!("{:.4}, {:.4}", f.center[1], f.center[0]) } else { "N/A".into() };

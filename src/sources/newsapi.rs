@@ -32,7 +32,7 @@ impl Source for NewsApi {
 
     async fn search(&self, client: &Client, query: &str, max_results: usize) -> OmniResult<Vec<SearchResult>> {
         let limit = max_results.min(100);
-        let url = format!("https://newsapi.org/v2/everything?q={}&pageSize={}&apiKey={}", urlencoding::encode(query), limit, self.api_key);
+        let url = format!("https://newsapi.org/v2/everything?q={}&pageSize={}&apiKey={}", urlencoding::encode(query), limit, urlencoding::encode(&self.api_key));
         let data: NaResponse = client.get(&url).send().await?.json().await?;
         Ok(data.articles.unwrap_or_default().into_iter().enumerate().map(|(i, a)| {
             SearchResult {

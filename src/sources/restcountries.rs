@@ -46,7 +46,7 @@ impl Source for RestCountries {
                 "Official: {} | Capital: {} | Region: {} | Population: {}",
                 c.name.official, capital,
                 c.region.unwrap_or("N/A".into()),
-                c.population.map(|p| format_number(p)).unwrap_or("N/A".into()),
+                c.population.map(format_number).unwrap_or("N/A".into()),
             );
             let code = c.cca2.unwrap_or_default().to_lowercase();
             SearchResult {

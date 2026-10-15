@@ -63,10 +63,11 @@ pub enum ConfigAction {
     Set {
         /// Source name
         source: String,
-        /// API key value
-        key: String,
+        /// API key value. Omit it or pass `-` to read it from stdin, which keeps
+        /// it out of shell history and the process list.
+        key: Option<String>,
     },
-    /// Show current configuration
+    /// Show current configuration (API keys masked)
     Show,
     /// Initialize default configuration file
     Init,

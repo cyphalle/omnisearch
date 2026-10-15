@@ -65,7 +65,7 @@ impl Source for CrossRef {
             }).collect();
             let published = item.created.and_then(|d| {
                 let parts = d.date_parts.first()?;
-                let y = *parts.first()? as i32;
+                let y = *parts.first()?;
                 let m = parts.get(1).copied().unwrap_or(1) as u32;
                 let d = parts.get(2).copied().unwrap_or(1) as u32;
                 NaiveDate::from_ymd_opt(y, m, d).map(|nd| nd.and_hms_opt(0,0,0).unwrap().and_utc())

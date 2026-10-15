@@ -25,7 +25,7 @@ impl Source for EventRegistry {
 
     async fn search(&self, client: &Client, query: &str, max_results: usize) -> OmniResult<Vec<SearchResult>> {
         let limit = max_results.min(50);
-        let url = format!("https://eventregistry.org/api/v1/article/getArticles?keyword={}&articlesCount={}&apiKey={}&resultType=articles", urlencoding::encode(query), limit, self.api_key);
+        let url = format!("https://eventregistry.org/api/v1/article/getArticles?keyword={}&articlesCount={}&apiKey={}&resultType=articles", urlencoding::encode(query), limit, urlencoding::encode(&self.api_key));
         let data: ErResponse = client.get(&url).send().await?.json().await?;
         Ok(data.articles.map(|a| a.results.into_iter().enumerate().map(|(i, a)| {
             SearchResult {

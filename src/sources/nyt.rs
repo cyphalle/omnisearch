@@ -32,7 +32,7 @@ impl Source for Nyt {
     fn rate_limit_per_minute(&self) -> u32 { 5 }
 
     async fn search(&self, client: &Client, query: &str, max_results: usize) -> OmniResult<Vec<SearchResult>> {
-        let url = format!("https://api.nytimes.com/svc/search/v2/articlesearch.json?q={}&api-key={}", urlencoding::encode(query), self.api_key);
+        let url = format!("https://api.nytimes.com/svc/search/v2/articlesearch.json?q={}&api-key={}", urlencoding::encode(query), urlencoding::encode(&self.api_key));
         let data: NytResponse = client.get(&url).send().await?.json().await?;
         Ok(data.response.map(|r| r.docs.into_iter().take(max_results).enumerate().map(|(i, d)| {
             SearchResult {

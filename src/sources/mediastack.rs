@@ -21,7 +21,7 @@ impl Source for MediaStack {
 
     async fn search(&self, client: &Client, query: &str, max_results: usize) -> OmniResult<Vec<SearchResult>> {
         let limit = max_results.min(100);
-        let url = format!("http://api.mediastack.com/v1/news?access_key={}&keywords={}&limit={}", self.api_key, urlencoding::encode(query), limit);
+        let url = format!("http://api.mediastack.com/v1/news?access_key={}&keywords={}&limit={}", urlencoding::encode(&self.api_key), urlencoding::encode(query), limit);
         let data: MsResponse = client.get(&url).send().await?.json().await?;
         Ok(data.data.unwrap_or_default().into_iter().enumerate().map(|(i, a)| {
             SearchResult {
